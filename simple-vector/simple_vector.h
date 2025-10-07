@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <utility>
+#include <assert.h>
 #include "array_ptr.h"
 
 struct ReserveProxyObj {
@@ -24,46 +25,50 @@ public:
     using ConstIterator = const Type*;
     SimpleVector() noexcept = default;
 
-    // Создаёт вектор из size элементов, инициализированных значением по умолчанию
+    //��� �� � �� �����, �������������
+    //explicit SimpleVector(size_t size)
+    //: SimpleVector(size, Type()) {}
+    //�� �������� ����� � ������� X � main
+
     explicit SimpleVector(size_t size)
         : size_{ size },
         capacity_{ size },
-        items_{ size > 0 ? new Type[size]() : nullptr } {
+        items_{ size } {
     }
 
-    // Создаёт вектор из size элементов, инициализированных значением value
+    //������ ��� �����, ��� �� �������������, ���������� ������� move ���������
+    //���� value - ��� ���� ������. � �������� ��������� � ���������� � ������������� �������
+    //� ���-���������, ��� ������ �� ��������. �����. 
+    //��-��� �����: "���� Type �� ����������, �� ������ ���������������� ��� �������� ����� ���������."
     SimpleVector(size_t size, const Type& value)
         : size_{ size },
         capacity_{ size },
-        items_{ size > 0 ? new Type[size]() : nullptr } {
-        // Напишите тело конструктора самостоятельно
+        items_{ size } {
         if (size > 0) {
             std::fill(begin(), end(), value);
         }
     }
 
-    // Создаёт вектор из std::initializer_list
+
     SimpleVector(std::initializer_list<Type> init)
         : size_{ init.size() },
         capacity_{ init.size() },
-        items_{ init.size() > 0 ? new Type[init.size()]() : nullptr } {
-        // Напишите тело конструктора самостоятельно
+        items_{ init.size() } {
         if (init.size() > 0) {
             std::copy(init.begin(), init.end(), begin());
         }
     }
 
-    //конструктор с резервированием объёма
     SimpleVector(const ReserveProxyObj& proxy_obj)
         : size_{},
         capacity_{ proxy_obj.capacity_ },
-        items_{ proxy_obj.capacity_ > 0 ? new Type[capacity_]() : nullptr } {
+        items_{ proxy_obj.capacity_ } {
     }
 
     SimpleVector(const SimpleVector& other)
         : size_{ other.size_ },
         capacity_{ other.size_ },
-        items_{ other.size_ > 0 ? new Type[other.size_] : nullptr } {
+        items_{ other.size_ } {
         if (other.size_ > 0) {
             std::copy(other.begin(), other.end(), begin());
         }
@@ -72,29 +77,27 @@ public:
     SimpleVector(SimpleVector&& other)
         : size_{ other.size_ },
         capacity_{ other.size_ },
-        items_{ other.size_ > 0 ? new Type[other.size_] : nullptr } {
+        items_{ other.size_ } {
         if (other.size_ > 0) {
-            std::copy(std::make_move_iterator(other.begin()), std::make_move_iterator(other.end()), begin());
+            items_ = std::move(other.items_);
             other.size_ = 0;
         }
     }
 
     SimpleVector& operator=(SimpleVector&& other) noexcept {
         if (this != &other) {
-            size_ = other.size_;
-            capacity_ = other.capacity_;
-            items_ = std::move(other.items_);  // Перемещаем ArrayPtr
-            other.size_ = 0; // Обнуляем other
+            swap(other);
+            other.size_ = 0;
             other.capacity_ = 0;
-            // ArrayPtr сам удалится в other
         }
         return *this;
     }
 
     SimpleVector& operator =(const SimpleVector<Type>& other) {
-        //copy and swap
-        SimpleVector temp(other);
-        swap(temp);
+        if (this != &other) {
+            SimpleVector<Type> temp(other);
+            swap(temp);
+        }
         return *this;
     }
 
@@ -112,10 +115,6 @@ public:
             ++size_;
         }
         else {
-            //тут снова идиома copy and swap
-            //делаем временный простой_вектор через конструктор
-            //копируем туда данные, меняем значения
-            //затем просто меняем вектора
 
             SimpleVector temp(size_ > 0 ? size_ * 2 : 1);
             std::copy(std::make_move_iterator(begin()), std::make_move_iterator(end()), temp.begin());
@@ -125,12 +124,10 @@ public:
         }
     }
 
-    // Вставляет значение value в позицию pos.
-// Возвращает итератор на вставленное значение
-// Если перед вставкой значения вектор был заполнен полностью,
-// вместимость вектора должна увеличиться вдвое, а для вектора вместимостью 0 стать равной 1
     Iterator Insert(ConstIterator pos, Type value) {
-        // Напишите тело самостоятельно
+        if (pos < begin() || pos > end()) {
+            throw std::out_of_range("Iterator is out of range for insertion");
+        }
         size_t index = std::distance(begin(), const_cast<Type*>(pos));
         if (size_ < capacity_) {
             std::copy_backward(std::make_move_iterator(const_cast<Type*>(pos)), std::make_move_iterator(end()), end() + 1);
@@ -148,82 +145,63 @@ public:
     }
 
     Iterator Erase(ConstIterator pos) {
-        // Напишите тело самостоятельно
+        if (pos < begin() || pos > end()) {
+            throw std::out_of_range("Iterator is out of range for insertion");
+        }
         size_t index = std::distance(begin(), const_cast<Type*>(pos));
         std::copy(std::make_move_iterator(const_cast<Type*>(pos) + 1), std::make_move_iterator(end()), const_cast<Type*>(pos));
         --size_;
         return begin() + index;
     }
 
-    void swap(SimpleVector<Type>& other) noexcept { //готов
+    void swap(SimpleVector<Type>& other) noexcept { //�����
         std::swap(size_, other.size_);
         std::swap(capacity_, other.capacity_);
-        //тут свап работает с ArrayPtr изза перемещающих конструкторов
         std::swap(items_, other.items_);
     }
 
-    // Возвращает количество элементов в массиве
     size_t GetSize() const noexcept {
-        // Напишите тело самостоятельно
         return size_;
     }
 
-    // Возвращает вместимость массива
     size_t GetCapacity() const noexcept {
-        // Напишите тело самостоятельно
         return capacity_;
     }
 
-    // Сообщает, пустой ли массив
     bool IsEmpty() const noexcept {
         return size_ == 0;
     }
 
-    // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
-        // Напишите тело самостоятельно
         return *(begin() + index);
     }
 
-    // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
-        // Напишите тело самостоятельно
+        // �������� ���� ��������������
         return *(begin() + index);
     }
 
-    // Возвращает константную ссылку на элемент с индексом index
-    // Выбрасывает исключение std::out_of_range, если index >= size
     Type& At(size_t index) {
-        // Напишите тело самостоятельно
         if (index >= size_) {
             throw std::out_of_range("out of range");
         }
         return *(begin() + index);
     }
 
-    // Возвращает константную ссылку на элемент с индексом index
-    // Выбрасывает исключение std::out_of_range, если index >= size
     const Type& At(size_t index) const {
-        // Напишите тело самостоятельно
         if (index >= size_) {
             throw std::out_of_range("out of range");
         }
         return *(begin() + index);
     }
 
-    // Обнуляет размер массива, не изменяя его вместимость
     void Clear() noexcept {
-        // Напишите тело самостоятельно
         size_ = 0;
     }
 
-    // Изменяет размер массива.
-    // При увеличении размера новые элементы получают значение по умолчанию для типа Type
     void Resize(size_t new_size) {
-        // Напишите тело самостоятельно
         if (new_size < size_) {
             size_ = new_size;
-
         }
         else if (new_size > size_) {
             SimpleVector temp(new_size);
@@ -242,46 +220,28 @@ public:
         }
     }
 
-    // Возвращает итератор на начало массива
-    // Для пустого массива может быть равен (или не равен) nullptr
     Iterator begin() noexcept {
-        // Напишите тело самостоятельно
         return items_.GetRawPtr();
     }
 
-    // Возвращает итератор на элемент, следующий за последним
-    // Для пустого массива может быть равен (или не равен) nullptr
     Iterator end() noexcept {
-        // Напишите тело самостоятельно
         return items_.GetRawPtr() + size_;
     }
 
-    // Возвращает константный итератор на начало массива
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator begin() const noexcept {
-        // Напишите тело самостоятельно
         return items_.GetRawPtr();
     }
 
-    // Возвращает итератор на элемент, следующий за последним
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator end() const noexcept {
-        // Напишите тело самостоятельно
         return items_.GetRawPtr() + size_;
     }
 
-    // Возвращает константный итератор на начало массива
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator cbegin() const noexcept {
-        // Напишите тело самостоятельно
         return items_.GetRawPtr();
 
     }
 
-    // Возвращает итератор на элемент, следующий за последним
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator cend() const noexcept {
-        // Напишите тело самостоятельно
         return items_.GetRawPtr() + size_;
     }
 

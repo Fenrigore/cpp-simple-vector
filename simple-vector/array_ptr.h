@@ -1,33 +1,31 @@
 #pragma once
 
-#include <stdexcept> // СЃРѕРґРµСЂР¶РёС‚ std::logic_error
+#include <utility>
 
 template <typename T>
 class ArrayPtr {
 public:
     ArrayPtr() = default;
 
-    explicit ArrayPtr(T* raw_ptr) noexcept
-        : ptr_(raw_ptr) {
+    explicit ArrayPtr(size_t size) noexcept
+        : ptr_(size > 0 ? new T[size] : nullptr) {
     }
 
-    // Р—Р°РїСЂРµС‰Р°РµРј РєРѕРїРёСЂРѕРІР°РЅРёРµ СѓРєР°Р·Р°С‚РµР»СЏ
+    // Запрещаем копирование указателя
     ArrayPtr(const ArrayPtr&) = delete;
 
-    // СѓРґР°Р»СЏРµРј РїСЂРёСЃРІР°РёРІР°РЅРёРµ
+    // удаляем присваивание
     ArrayPtr& operator=(const ArrayPtr&) = delete;
 
-    //РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїРµСЂРµРјРµС‰РµРЅРёСЏ
+    //конструктор перемещения
     ArrayPtr(ArrayPtr&& other) noexcept : ptr_(other.ptr_) {
         other.ptr_ = nullptr;
     }
 
-    //РїРµСЂРµРјРµС‰Р°СЋС‰РёР№ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїСЂРёСЃРІР°РёРІР°РЅРёСЏ
+    //перемещающий конструктор присваивания
     ArrayPtr& operator=(ArrayPtr&& other) noexcept {
         if (this != &other) {
-            delete[] ptr_;
-            ptr_ = other.ptr_;
-            other.ptr_ = nullptr;
+            std::swap(ptr_, other.ptr_);
         }
         return *this;
     }
@@ -41,9 +39,7 @@ public:
     }
 
     T* Release() noexcept {
-        T* p = ptr_;
-        ptr_ = nullptr;
-        return p;
+        return std::exchange(ptr_, nullptr);
     }
 
     explicit operator bool() const {
