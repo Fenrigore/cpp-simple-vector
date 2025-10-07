@@ -11,18 +11,18 @@ public:
         : ptr_(size > 0 ? new T[size] : nullptr) {
     }
 
-    // Запрещаем копирование указателя
+    // Р—Р°РїСЂРµС‰Р°РµРј РєРѕРїРёСЂРѕРІР°РЅРёРµ СѓРєР°Р·Р°С‚РµР»СЏ
     ArrayPtr(const ArrayPtr&) = delete;
 
-    // удаляем присваивание
+    // СѓРґР°Р»СЏРµРј РїСЂРёСЃРІР°РёРІР°РЅРёРµ
     ArrayPtr& operator=(const ArrayPtr&) = delete;
 
-    //конструктор перемещения
+    //РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїРµСЂРµРјРµС‰РµРЅРёСЏ
     ArrayPtr(ArrayPtr&& other) noexcept : ptr_(other.ptr_) {
         other.ptr_ = nullptr;
     }
 
-    //перемещающий конструктор присваивания 
+    //РїРµСЂРµРјРµС‰Р°СЋС‰РёР№ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїСЂРёСЃРІР°РёРІР°РЅРёСЏ 
     ArrayPtr& operator=(ArrayPtr&& other) noexcept {
         if (this != &other) {
             std::swap(ptr_, other.ptr_);
