@@ -71,7 +71,7 @@ public:
         capacity_{ other.size_ },
         items_{ other.size_ } {
         if (other.size_ > 0) {
-            std::copy(std::make_move_iterator(other.begin()), std::make_move_iterator(other.end()), begin());
+            std::copy(other.begin(), other.end(), begin());
         }
     }
 
@@ -88,16 +88,19 @@ public:
     SimpleVector& operator=(SimpleVector&& other) noexcept {
         if (this != &other) {
             swap(other);
-            other.size_ = 0;
-            other.capacity_ = 0;
         }
         return *this;
     }
 
     SimpleVector& operator =(const SimpleVector<Type>& other) {
         if (this != &other) {
-            SimpleVector<Type> temp(other);
-            swap(temp);
+            if (!other.IsEmpty()) {
+                SimpleVector<Type> temp(other);
+                swap(temp);
+            }
+            else {
+                size_ = 0;
+            }
         }
         return *this;
     }
@@ -146,8 +149,8 @@ public:
     }
 
     Iterator Erase(ConstIterator pos) {
-        if (pos < begin() || pos > end()) {
-            throw std::out_of_range("Iterator is out of range for insertion");
+        if (pos < begin() || pos >= end()) {
+            throw std::out_of_range("Iterator is out of range for erase");
         }
         size_t index = std::distance(begin(), const_cast<Type*>(pos));
         std::copy(std::make_move_iterator(const_cast<Type*>(pos) + 1), std::make_move_iterator(end()), const_cast<Type*>(pos));
@@ -174,23 +177,25 @@ public:
     }
 
     Type& operator[](size_t index) noexcept {
+        assert(index < size_);
         return *(begin() + index);
     }
 
     const Type& operator[](size_t index) const noexcept {
+        assert(index < size_);
         return *(begin() + index);
     }
 
     Type& At(size_t index) {
         if (index >= size_) {
-            throw std::out_of_range("out of range");
+            throw std::out_of_range("Index is out of range");
         }
         return *(begin() + index);
     }
 
     const Type& At(size_t index) const {
         if (index >= size_) {
-            throw std::out_of_range("out of range");
+            throw std::out_of_range("Index is out of range");
         }
         return *(begin() + index);
     }
