@@ -22,7 +22,7 @@ public:
         other.ptr_ = nullptr;
     }
 
-    //перемещающий конструктор присваивания
+    //перемещающий конструктор присваивания 
     ArrayPtr& operator=(ArrayPtr&& other) noexcept {
         if (this != &other) {
             std::swap(ptr_, other.ptr_);

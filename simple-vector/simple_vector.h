@@ -28,7 +28,7 @@ public:
     //что бы я не делал, делегирование
     //explicit SimpleVector(size_t size)
     //: SimpleVector(size, Type()) {}
-    //не проходит тесты с классом X в main
+    //не проходит тесты с классом X в main 
 
     explicit SimpleVector(size_t size)
         : size_{ size },
