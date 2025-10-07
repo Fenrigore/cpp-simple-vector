@@ -25,21 +25,11 @@ public:
     using ConstIterator = const Type*;
     SimpleVector() noexcept = default;
 
-    //что бы я не делал, делегирование
-    //explicit SimpleVector(size_t size)
-    //: SimpleVector(size, Type()) {}
-    //не проходит тесты с классом X в main 
 
     explicit SimpleVector(size_t size)
-        : size_{ size },
-        capacity_{ size },
-        items_{ size } {
+        : SimpleVector(size, Type{}) {
     }
 
-    //Потому что здесь, как ни изворачивайся, невозможно сделать move семантику
-    //если value - это один объект. Я пробовал создавать и перегрузку с универсальной ссылкой
-    //и мув-итераторы, что только не пробовал. Никак. 
-    //ИИ-шка пишет: "Если Type не копируемый, то нельзя инициализировать все элементы одним значением."
     SimpleVector(size_t size, const Type& value)
         : size_{ size },
         capacity_{ size },
@@ -49,13 +39,24 @@ public:
         }
     }
 
+    SimpleVector(size_t size, Type&& value)
+        : size_{ size },
+        capacity_{ size },
+        items_{ size } {
+        if (size > 0) {
+            for (size_t i = 0; i < size; ++i) {
+                *(begin() + i) = std::move(value);
+            }
+        }
+    }
+
 
     SimpleVector(std::initializer_list<Type> init)
         : size_{ init.size() },
         capacity_{ init.size() },
         items_{ init.size() } {
         if (init.size() > 0) {
-            std::copy(init.begin(), init.end(), begin());
+            std::copy(std::make_move_iterator(init.begin()), std::make_move_iterator(init.end()), begin());
         }
     }
 
@@ -70,7 +71,7 @@ public:
         capacity_{ other.size_ },
         items_{ other.size_ } {
         if (other.size_ > 0) {
-            std::copy(other.begin(), other.end(), begin());
+            std::copy(std::make_move_iterator(other.begin()), std::make_move_iterator(other.end()), begin());
         }
     }
 
@@ -154,7 +155,7 @@ public:
         return begin() + index;
     }
 
-    void swap(SimpleVector<Type>& other) noexcept { //готов
+    void swap(SimpleVector<Type>& other) noexcept { //�����
         std::swap(size_, other.size_);
         std::swap(capacity_, other.capacity_);
         std::swap(items_, other.items_);
@@ -177,7 +178,6 @@ public:
     }
 
     const Type& operator[](size_t index) const noexcept {
-        // Напишите тело самостоятельно
         return *(begin() + index);
     }
 
@@ -204,10 +204,13 @@ public:
             size_ = new_size;
         }
         else if (new_size > size_) {
-            SimpleVector temp(new_size);
-            temp.size_ = new_size;
-            std::copy(std::make_move_iterator(begin()), std::make_move_iterator(end()), temp.begin());
-            swap(temp);
+            if (new_size > capacity_) {
+                Reserve(new_size);
+            }
+            while (size_ < new_size) {
+                *(items_.GetRawPtr() + size_) = Type{};
+                ++size_;
+            }
         }
     }
 
